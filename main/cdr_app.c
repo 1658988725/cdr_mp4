@@ -17,7 +17,7 @@ int aastreamout(void *data)
 int main(void) 
 {
 	cdr_init_mp4dir(MP4DIRPATH);	
-	getchar();
+
 	getchar();
 	while(1)
 	{
