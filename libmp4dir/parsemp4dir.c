@@ -9,7 +9,7 @@
 #include "mp4info.h"
 #include <mp4v2/mp4v2.h>
 
-#include "sps_pps.h"
+//#include "sps_pps.h"
 
 
 mp4_dir_info *pMp4dirinfo = NULL;
@@ -28,14 +28,14 @@ void mp4Item_print(void* data)
 	printf("spslen %d\n", s->spslen);
 	for(i=0;i<s->spslen;i++)
 	{
-		printf("%02x ",(unsigned char)s->sps[i]);
+		printf("0x%02x,",(unsigned char)s->sps[i]);
 	}
 	printf("\n");
 
 	printf("ppslen %d\n", s->ppslen);
 	for(i=0;i<s->ppslen;i++)
 	{
-		printf("%02x ",(unsigned char)s->pps[i]);
+		printf("0x%02x,",(unsigned char)s->pps[i]);
 	}
 	printf("\n");
 #endif	
@@ -93,6 +93,8 @@ int cdr_mp4dirlist_free(void)
 	empty_list(pMp4dirinfo->cutList,mp4Item_free);
 	free(pMp4dirinfo->fileList);
 	free(pMp4dirinfo->cutList);
+	pMp4dirinfo->fileList = NULL;
+	pMp4dirinfo->cutList = NULL;
 	free(pMp4dirinfo);
 	pMp4dirinfo = NULL;
 	
@@ -216,7 +218,7 @@ int cdr_read_mp4_ex(char *pTm,int len,stream_out_cb pstreamout)
 	struct tm tmTMP;	
 
 	if(!pTm || len <= 0) return -1;
-	
+	printf("%s %d\n",__FUNCTION__,__LINE__);
 	Mp4ReadInfo *mp4ReadInfo = malloc(sizeof(Mp4ReadInfo));
 	strptime(pTm, "%Y%m%d%H%M%S", &tmTMP); 
 	tmTMP.tm_isdst = -1;	  
@@ -226,6 +228,7 @@ int cdr_read_mp4_ex(char *pTm,int len,stream_out_cb pstreamout)
 	Mp4Info *s = get_if(pMp4dirinfo->fileList,mp4ReadInfo, mp4info_timeeq);
 	if(s)
 	{
+		printf("%s %d\n",__FUNCTION__,__LINE__);
 		mp4ReadInfo->oMp4Info = s;
 		mp4ReadInfo->pStreamcb = pstreamout;
 		sprintf(mp4ReadInfo->chName,"%s/%s_%03d.mp4",MP4CUTOUTPATH,pTm,len);
@@ -249,7 +252,7 @@ void *mp4dirdemuxercb(void* pAgs)
 	Mp4Info *pMp4Item;
 	DIR *dir;
 	struct dirent *ptr = NULL;
-	char chName[256];
+	static char chName[256];
 
 	while(p->nThreadStart)
 	{
@@ -296,7 +299,12 @@ void *mp4dirdemuxercb(void* pAgs)
 		}
 		closedir(dir);
 		usleep(3);
-		//traverse(p->fileList,mp4Item_print);
+		static int flag = 0;
+		if(flag == 0)
+		{
+			traverse(p->fileList,mp4Item_print);
+			flag = 1;
+		}
 	}
 
 	printf("%s thread finish..\n",__FUNCTION__);
@@ -434,7 +442,7 @@ int cdr_mp4ex_read_vframe(char **pFrameData,int *nLen,int *IFrame)
 	MP4Duration pRenderingOffset;
 	bool pIsSyncSample = 0;
 
-	printf("g_pRrecStream->VReadIndex :%d\n",g_pRrecStream->VReadIndex );
+	//printf("g_pRrecStream->VReadIndex :%d\n",g_pRrecStream->VReadIndex );
 	
 	MP4ReadSample(g_pRrecStream->oMp4File,g_pRrecStream->oMp4Info->videoindex,g_pRrecStream->VReadIndex,
 		&pData,&nSize,&pStartTime,&pDuration,&pRenderingOffset,&pIsSyncSample);	
@@ -447,11 +455,32 @@ int cdr_mp4ex_read_vframe(char **pFrameData,int *nLen,int *IFrame)
 		pData[2] = 0x00;
 		pData[3] = 0x01;
 	}
-	
+
+	if(*pFrameData)
+		memcpy(*pFrameData,pData,nSize);
+	if(nLen)
+		*nLen = nSize;
+	if(IFrame)
+	{
+		if(pIsSyncSample)
+		*IFrame = CDR_H264_NALU_ISLICE;
+		else
+		*IFrame = CDR_H264_NALU_PSLICE;
+	}
+
 	free(pData);
 	pData = NULL;
 	
 	g_pRrecStream->VReadIndex = g_pRrecStream->VReadIndex+1;
+	
+	return 0;
+}
+int cdr_mp4ex_close(void)
+{
+	if(g_pRrecStream)
+	if(g_pRrecStream->oMp4File)
+		MP4Close(g_pRrecStream->oMp4File,0);
+	g_pRrecStream->oMp4File = NULL;
 	
 	return 0;
 }

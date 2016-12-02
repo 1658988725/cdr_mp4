@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>  
 #include "list.h"
 
 /* The node struct.  Has a prev pointer, next pointer, and data. */
@@ -34,10 +35,17 @@ static node* create_node(void* data);
   */
 list* create_list(void)
 {
+	//printf("sizeof(list):%d\n",(unsigned int)sizeof(list));	
   list *l = malloc(sizeof(list));
+	if(l == NULL)
+	{
+		printf("*******%d%d\n",errno,ENOMEM);
+		return NULL;
+
+	}
   l->head = NULL;
   l->size = 0;
-  pthread_mutex_init(&(l->mutex), NULL);
+ // pthread_mutex_init(&(l->mutex), NULL);
   return l;
 }
 
@@ -51,7 +59,15 @@ list* create_list(void)
   */
 static node* create_node(void* data)
 {
-  node *n = malloc(sizeof(node));
+	//printf("sizeof(node):%d\n",(int)sizeof(node));
+	node *n = malloc(sizeof(node));
+	if(!n)
+	{
+		//printf("%s\n",strerror(errno)); 
+		printf("errno=%d\n",errno);
+		printf("create_node malloc fail..\n");
+	}
+  
   n->data = data;
   n->prev = NULL;
   n->next = NULL;
@@ -69,7 +85,7 @@ void push_front(list* llist, void* data)
 {
   node *n = create_node(data);
 
-  pthread_mutex_lock(&(llist->mutex));
+  //pthread_mutex_lock(&(llist->mutex));
   // if the list if size 0
   if (!llist->size) {
     // then the next and prev nodes to itself
@@ -91,7 +107,7 @@ void push_front(list* llist, void* data)
   // set the head of the list to the new node
   llist->head = n;
   llist->size++;
-  pthread_mutex_unlock(&(llist->mutex));
+  //pthread_mutex_unlock(&(llist->mutex));
 }
 
 /** push_back
@@ -105,7 +121,7 @@ void push_back(list* llist, void* data)
 {
   node *n = create_node(data);
   
-  pthread_mutex_lock(&(llist->mutex));
+  //pthread_mutex_lock(&(llist->mutex));
 
   // if the list size is 0
   if (!llist->size) {
@@ -128,7 +144,7 @@ void push_back(list* llist, void* data)
     prev->next = n;
   }
   llist->size++;
-  pthread_mutex_unlock(&(llist->mutex));
+  //pthread_mutex_unlock(&(llist->mutex));
 }
 
 /** push_if
@@ -197,9 +213,19 @@ void push_if(list* llist, void* data,equal_op compare_func)
   */
 int remove_front(list* llist, list_op free_func)
 {
-  if (!llist->size) return -1;
-  
-  pthread_mutex_lock(&(llist->mutex));
+	//pthread_mutex_lock(&(llist->mutex));
+
+	if(llist== NULL)
+	{
+		printf("remove_front llist is null\n");
+	}
+	if (!llist->size)
+	{
+		//pthread_mutex_unlock(&(llist->mutex));
+		return -1;
+	}
+
+  //pthread_mutex_lock(&(llist->mutex));
 
   node *head = llist->head;
   
@@ -223,7 +249,7 @@ int remove_front(list* llist, list_op free_func)
   free(head);
 
   llist->size--;
-  pthread_mutex_unlock(&(llist->mutex));
+ // pthread_mutex_unlock(&(llist->mutex));
   return 0;
 }
 
@@ -244,7 +270,7 @@ int remove_index(list* llist, int index, list_op free_func)
 
   int i;
 
-  pthread_mutex_lock(&(llist->mutex));
+  //pthread_mutex_lock(&(llist->mutex));
 
   node *current = llist->head; // = index of 0
 
@@ -271,7 +297,7 @@ int remove_index(list* llist, int index, list_op free_func)
   free(current);
   
   llist->size--;
-  pthread_mutex_unlock(&(llist->mutex));
+  //pthread_mutex_unlock(&(llist->mutex));
 
   return 0;
 }
@@ -287,10 +313,15 @@ int remove_index(list* llist, int index, list_op free_func)
   * @return -1 if the remove failed 0 if the remove succeeded.
   */
 int remove_back(list* llist, list_op free_func)
-{  
-  if (!llist->size) return -1;
+{ 
+	//pthread_mutex_lock(&(llist->mutex));
+	if (!llist->size)
+	{
+		//pthread_mutex_unlock(&(llist->mutex));
+		return -1;
+	}
   
-  pthread_mutex_lock(&(llist->mutex));
+  
 
   node *head = llist->head;
   node *tbr = head->prev; // to be removed
@@ -311,7 +342,7 @@ int remove_back(list* llist, list_op free_func)
   free(tbr);
   
   llist->size--;
-  pthread_mutex_unlock(&(llist->mutex));
+  //pthread_mutex_unlock(&(llist->mutex));
 
   return 0;
 }
@@ -334,7 +365,7 @@ int remove_data(list* llist, const void* data, equal_op compare_func, list_op fr
 
   if (!llist->size) return removed;
 
-  pthread_mutex_lock(&(llist->mutex));
+  //pthread_mutex_lock(&(llist->mutex));
 
   node *current = llist->head;
   node *next = current->next;
@@ -378,7 +409,7 @@ int remove_data(list* llist, const void* data, equal_op compare_func, list_op fr
 
   // if the size is zero the list is empty and the head should be null
   if (!llist->size) llist->head = NULL;
-  pthread_mutex_unlock(&(llist->mutex));
+  //pthread_mutex_unlock(&(llist->mutex));
 
   return removed;
 }
@@ -398,7 +429,7 @@ int remove_if(list* llist, list_pred pred_func, list_op free_func)
 
   int i;
 
-  pthread_mutex_lock(&(llist->mutex));
+  //pthread_mutex_lock(&(llist->mutex));
 
   int removed = 0;
   node *current = llist->head;
@@ -443,7 +474,7 @@ int remove_if(list* llist, list_pred pred_func, list_op free_func)
 
   // if the list is empty make the head null
   if (!llist->size) llist->head = NULL;
-  pthread_mutex_unlock(&(llist->mutex));
+  //pthread_mutex_unlock(&(llist->mutex));
 
   return removed;
 }
@@ -482,14 +513,14 @@ void* get_index(list* llist, int index)
 
   int i;
   
-  pthread_mutex_lock(&(llist->mutex));
+ // pthread_mutex_lock(&(llist->mutex));
   
   // loop through the list until you get to the desired index
   node *current = llist->head; // index = 0
   for (i=0; i<index; i++) {
     current = current->next;
   }
-  pthread_mutex_unlock(&(llist->mutex));
+  //pthread_mutex_unlock(&(llist->mutex));
 
   return current->data;
 }
@@ -558,11 +589,11 @@ void* back(list* llist)
   // if the list is empty return null
   if (!llist->size) return NULL;
   
-  pthread_mutex_lock(&(llist->mutex));
+  //pthread_mutex_lock(&(llist->mutex));
 
   // return the previous of the head
   node *end = llist->head->prev;
-  pthread_mutex_unlock(&(llist->mutex));
+  //pthread_mutex_unlock(&(llist->mutex));
   return end->data;
 }
 
@@ -591,7 +622,14 @@ int is_empty(list* llist)
   */
 int size(list* llist)
 {
-  return llist->size;
+	//printf("%s %d ...\n",__FUNCTION__,__LINE__);
+	if(llist)
+	  return llist->size;
+	else
+	{
+		printf("%s %d llist is null...\n",__FUNCTION__,__LINE__);
+		return 0;
+	}
 }
 
 /** find_occurence

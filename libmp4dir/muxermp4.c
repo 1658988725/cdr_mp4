@@ -131,6 +131,14 @@ int mp4list_eq(const void* a, const void* b)
 	
 }
 
+void mp4list_print(void* a)
+{
+	Mp4Context *p = a;
+	printf("%d\n",p->nIndex);	
+	//	return  0;	
+}
+
+
 //function:create a mp4 header
 int cdr_mp4_create(Mp4Context *pMp4Context)
 {	
@@ -139,7 +147,9 @@ int cdr_mp4_create(Mp4Context *pMp4Context)
 
 	Mp4Context *p = malloc(sizeof(Mp4Context));
 	memcpy(p,pMp4Context,sizeof(Mp4Context));
-	
+	//p->pFramelist = create_list();
+	p->pFrameHead = NULL;
+	p->pFrameTail = NULL;
 	if(-1 == InitMp4Encoder(p))
 	{
 		free(p);
@@ -174,22 +184,40 @@ int cdr_mp4_write_frame(int handle,MP4_FRAME *pData)
 {	
 	int nIndex = handle;
 	
-	if(size(g_mp4_list) <= 0) return -1;
+	//if(size(g_mp4_list) <= 0) return -1;
 		
 	Mp4Context *p = get_if(g_mp4_list,&nIndex,mp4list_eq);
 
-	if(!p) return -1;
+	if(!p) 
+	{
+		printf("handle = %d,p is null\n",handle);
+		traverse(g_mp4_list,mp4list_print);
+		return -1;
+	}
 
 	if(p->closeFlag == 1) return -1;
-		
+
 	MP4_FRAME *pDataNode = malloc(sizeof(MP4_FRAME));
 	memcpy(pDataNode,pData,sizeof(MP4_FRAME));
 	pDataNode->pData = malloc(pData->nlen);
-	memcpy(pDataNode->pData,pData->pData,pDataNode->nlen);	
-
-	if(!p->pFramelist) p->pFramelist = create_list();
+	memcpy(pDataNode->pData,pData->pData,pDataNode->nlen);
+	framenode *pNode = malloc(sizeof(framenode));
+	pNode->next = NULL;
+	pNode->data = (void*)pDataNode;
 	
-	push_front(p->pFramelist,pDataNode);
+    //若 g_mp4_new[handle].pVideoListLast不为null则写入g_mp4_new[handle].pVideoListLast->next 
+    //反之则写入g_mp4_new[handle].pVideoListLast
+	if(p->pFrameTail != NULL)
+	{
+		p->pFrameTail->next = pNode;
+	}		
+	p->pFrameTail = pNode;
+
+
+	if(p->pFrameHead == NULL)
+	{
+		p->pFrameHead = pNode;
+	}
 	
 	return 0;
 }
@@ -245,6 +273,7 @@ int _Mp4VEncode(Mp4Context* pFd, unsigned char* naluData, int naluSize,int nalut
 		naluData[3] = (naluSize - 4) & 0xff;
 	   if (!MP4WriteSample(pFd->hFile, pFd->video, naluData, naluSize, MP4_INVALID_DURATION, 0, 1))
 	   {
+	   	   printf("%s MP4WriteSample CDR_H264_NALU_ISLICE error\n",__FUNCTION__);
 		   return -1;
 	   }
 	   break;
@@ -257,6 +286,7 @@ int _Mp4VEncode(Mp4Context* pFd, unsigned char* naluData, int naluSize,int nalut
 		   naluData[3] = (naluSize - 4) & 0xff;
 		   if (!MP4WriteSample(pFd->hFile, pFd->video, naluData, naluSize, MP4_INVALID_DURATION, 0, 0))
 		   {
+		   	   printf("%s MP4WriteSample CDR_H264_NALU_PSLICE error\n",__FUNCTION__);
 			   return -1;
 		   }
 		   break;
@@ -283,6 +313,9 @@ int _Mp4AEncode(Mp4Context* pFd, unsigned char* aacData, int aacSize)
 int _write_frame_to_mp4(Mp4Context *pfd,MP4_FRAME *pFrame)
 {
 	//printf("%s \n",__FUNCTION__);
+	if(!pFrame)
+		printf("%s  pFrame is null\n",__FUNCTION__);
+	
 	if(pFrame->streamType == MP4STREAM_VIDEO)
 	{
 		//MP4 video编码
@@ -315,7 +348,7 @@ int get_mp4_len(MP4FileHandle hFile)
 			numSamples = MP4GetTrackNumberOfSamples(hFile, trackId);	
 		}
 	}
-	printf("%s %d\r\n",__FUNCTION__,numSamples);
+	//printf("%s %d\r\n",__FUNCTION__,numSamples);
 	return numSamples;
 }
 
@@ -350,32 +383,50 @@ void FrameFree(void *data)
 void Mp4ItemFree(void *data)
 {
 	Mp4Context *p = data;
-	empty_list(p->pFramelist,FrameFree);
-	free(p->pFramelist);
+	//empty_list(p->pFramelist,FrameFree);
+	//free(p->pFramelist);
 	free(p);
 }
 
 void* write_frame_to_mp4_pro(void *pParam)
 {
 	Mp4Context *pTmp = (Mp4Context *)pParam;
+	framenode *pVCurrent = NULL;
+	MP4_FRAME *pFrame = NULL;
 	while(1)
 	{
 		usleep(10);
-
-		if(size(pTmp->pFramelist))
+		if(pTmp->pFrameHead != NULL)
 		{
-			MP4_FRAME *pFrame = back(pTmp->pFramelist);
+			pVCurrent = pTmp->pFrameHead;
+			pFrame = (MP4_FRAME*)pVCurrent->data;
 			_write_frame_to_mp4(pTmp,pFrame);
-			remove_back(pTmp->pFramelist,FrameFree);
+
+			pTmp->pFrameHead = pVCurrent->next;
+
+			if(pVCurrent == pTmp->pFrameTail)
+			{
+				pTmp->pFrameTail = NULL;
+			}
+
+			free(pFrame->pData);
+			free(pVCurrent->data);
+			free(pVCurrent);
+			pFrame = NULL;
+			pVCurrent = NULL;
 		}
-		else if(size(pTmp->pFramelist) == 0 && pTmp->closeFlag == 1)
-		{
+
+		 //找到链表的末端
+		if(pTmp->pFrameTail == NULL && pTmp->closeFlag == 1)
+		{		
+			//这个是为截取mp4 ack响应做的处理.
+			//最后需要用回调函数来解决.20160804.LL
 			CloseMp4Encoder(pTmp);
 			pTmp->outcb(0);
-			remove_data(g_mp4_list,&pTmp->nIndex,mp4list_eq,Mp4ItemFree);
 			break;
 		}
 	}
+
 	return NULL;
 }
 

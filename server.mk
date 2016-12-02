@@ -8,10 +8,11 @@ ifeq ($(PLATFORM),UBUNTU64)
 	HOME=$(shell pwd)
 	export HOME
 	INC = -I. -I$(HOME)/include -I$(HOME)/include/mp4v2
-	CFLAGS = $(INC) -I. -I../include  -std=c99 -pedantic -Wall -Werror -lpthread	-D_GNU_SOURCE
-	MYLIB = ../lib 
-	OPENSOURCELIB = ../opensourcelib_pc
-	LDFLAGS = -L. -L$(MYLIB)  -L$(OPENSOURCELIB)
+	CFLAGS = $(INC) -I. -I../include  -std=c99 -pedantic -Wall -Werror -lpthread	-D_GNU_SOURCE 
+	MYLIB = ../lib/
+###	OPENSOURCELIB = ../opensourcelib_pc
+###	LDFLAGS = -L. -L$(OPENSOURCELIB) -L$(MYLIB)
+	LDFLAGS = -L. -L$(MYLIB)
 endif
 
 ifeq ($(PLATFORM),HISI3516CV200)
@@ -25,9 +26,9 @@ ifeq ($(PLATFORM),HISI3516CV200)
 	export HOME
 	INC = -I. -I$(HOME)/include -I$(HOME)/include/mp4v2
 	CFLAGS = $(INC) -I. -I../include -std=c99 -pedantic -Wall -Werror -lpthread	-D_GNU_SOURCE
-	MYLIB = ../lib 
+	MYLIB = ../lib/
 	OPENSOURCELIB = ../opensourcelib_hisi
-	LDFLAGS = -L. -L$(MYLIB)  -L$(OPENSOURCELIB)
+	LDFLAGS = -L. -L$(OPENSOURCELIB) -L$(MYLIB)
 endif
 
 ifeq ($(RELEASE),y)

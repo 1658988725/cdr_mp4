@@ -11,11 +11,11 @@
 #include "../libutility/libutility.h"
 #include <mp4v2/mp4v2.h>
 
-//#define MP4DIRPATH "/home/ll/work2016/study/mp4dirapp/res"
-//#define MP4CUTOUTPATH "/home/ll/work2016/study/cdr_app"
+#define MP4DIRPATH "/home/ll/work2016/study/mp4dirapp/res"
+#define MP4CUTOUTPATH "/home/ll/work2016/study/cdr_mp4"
 
-#define MP4DIRPATH "/mnt/mmc/VIDEO"
-#define MP4CUTOUTPATH "/mnt/mmc/tmp"
+//#define MP4DIRPATH "/mnt/mmc/VIDEO"
+//#define MP4CUTOUTPATH "/mnt/mmc/tmp"
 
 typedef int (*stream_out_cb)(const void*);
 
@@ -120,6 +120,12 @@ typedef struct _Mp4v2_VConfig
 	unsigned short height;         //视频高
 }MP4V2_VCONFIG;
 
+typedef struct lframenode
+{
+  struct lframenode* next; /* Pointer to next node */
+  void* data; /* User data */
+} framenode;
+
 typedef struct mp4Context
 {
 	int nIndex;
@@ -132,7 +138,9 @@ typedef struct mp4Context
 	unsigned char pps[64];
 	int spslen;
 	int ppslen;
-	list *pFramelist;
+	//list *pFramelist;
+	framenode *pFrameHead;
+	framenode *pFrameTail;
 	MP4FileHandle hFile;          //mp4文件描述符
 	MP4TrackId video;              //视频轨道标志符
 	MP4TrackId audio;              //音频轨道标志符
@@ -153,6 +161,7 @@ int cdr_mp4_create_ex(Mp4Context *pMp4Context);
 int cdr_mp4_write_frame_ex(int handle,MP4_FRAME *pData);
 int cdr_mp4_close_ex(int handle);
 int cdr_mp4ex_read_vframe(char **pFrameData,int *nLen,int *IFrame);
+int cdr_mp4ex_close(void);
 
 
 typedef struct _mp4_dir_info

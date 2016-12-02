@@ -24,7 +24,7 @@ typedef struct llist
 {
   struct lnode* head; /* Head pointer either points to a node with data or NULL */
   unsigned int size; /* Size of the linked list */
-  pthread_mutex_t mutex;
+ // pthread_mutex_t mutex;
 } list;
 
 /* A function pointer type that points to a function that takes in a void* and returns nothing call it list_op */
