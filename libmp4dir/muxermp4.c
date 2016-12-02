@@ -149,7 +149,8 @@ int cdr_mp4_create(Mp4Context *pMp4Context)
 	memcpy(p,pMp4Context,sizeof(Mp4Context));
 	//p->pFramelist = create_list();
 	p->pFrameHead = NULL;
-	p->pFrameTail = NULL;
+	p->pFrameTail = NULL;	
+	p->nFrameleft = p->nlen * p->oVideoCfg.fps;
 	if(-1 == InitMp4Encoder(p))
 	{
 		free(p);
@@ -166,17 +167,7 @@ int cdr_mp4_create(Mp4Context *pMp4Context)
 	return p->nIndex;
 }
 
-//set the mp4 len.
-int cdr_mp4_setlen(int handle,int len)
-{
-	Mp4Context *p = get_if(g_mp4_list,&handle,mp4list_eq);
-	if(p)
-	{
-		p->nlen = (p->nlen % p->oVideoCfg.fps) + (len * (p->oVideoCfg.fps));
-		p->nCutFlag = 1;
-	}
-	return 0;
-}
+
 
 //H.264 frame format:nal + data(sps pps i p sei)
 //AAC   Famer format:adts + data.
@@ -218,7 +209,7 @@ int cdr_mp4_write_frame(int handle,MP4_FRAME *pData)
 	{
 		p->pFrameHead = pNode;
 	}
-	
+	p->nFrameleft --;	
 	return 0;
 }
 
@@ -229,6 +220,30 @@ int cdr_mp4_close(int handle)
 	{
 		p->closeFlag = 1;
 		return 0;
+	}
+	return -1;
+}
+
+//set the mp4 len.
+int cdr_mp4_setlen(int handle,int len)
+{
+	Mp4Context *p = get_if(g_mp4_list,&handle,mp4list_eq);
+	if(p)
+	{
+		p->nFrameleft = (p->nFrameleft % p->oVideoCfg.fps) + (len * (p->oVideoCfg.fps));
+		p->nCutFlag = 1;
+	}
+	return -1;
+}
+
+//¼ì²éÊ£ÓàµÄÖ¡Êý.
+int cdr_mp4_checklen(int handle)
+{
+	Mp4Context *p = get_if(g_mp4_list,&handle,mp4list_eq);
+	if(p)
+	{
+		//p->closeFlag = 1;
+		return p->nFrameleft;
 	}
 	return -1;
 }

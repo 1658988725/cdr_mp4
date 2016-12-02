@@ -37,30 +37,27 @@ int mp4_cutfinish(void* a)
 
 int main(void) 
 {
-
 	cdr_init_mp4dir(MP4DIRPATH);	
+
+	//demo of read rec stream.
+	//create mp4 async
 #if 1	
 	char fileName[256];
-
 	getchar();
 	srand((unsigned)time(0));
-
 	int nSize;
 	int nIFrame;
 	int handle;
 	char *pData = malloc(1920*1080);
 	MP4_FRAME *pDataFrame = malloc(sizeof(MP4_FRAME));
 	int nCreateFile = 10;
-	//cdr_mp4_create
-#if 1
-
 	while(nCreateFile)
 	{
-		int totalFrame = 1000+rand() % 300;	
+		//int totalFrame = 1000+rand() % 300;	
 		Mp4Context *pMp4Context = malloc(sizeof(Mp4Context));
 		sprintf(fileName,"/home/ll/work2016/study/cdr_mp4/out%d.mp4",nCreateFile--);
 		strcpy(pMp4Context->sName,fileName);
-		pMp4Context->nlen = 5;
+		pMp4Context->nlen = 5 + rand() % 10;
 		pMp4Context->nNeedAudio= 0;
 		pMp4Context->oVideoCfg.timeScale = 90000;
 		pMp4Context->oVideoCfg.fps = 30;
@@ -72,24 +69,18 @@ int main(void)
 		memcpy(pMp4Context->pps,ppsdata,ppslen);
 		pMp4Context->outcb = mp4_finish;
 		handle = cdr_mp4_create(pMp4Context);	
-
 		free(pMp4Context);
 		pMp4Context = NULL;
-
-		while(totalFrame)
+		while(cdr_mp4_checklen(handle))
 		{
 			cdr_mp4ex_read_vframe(&pData,&nSize,&nIFrame);
-
 			memset(pDataFrame,0x00,sizeof(MP4_FRAME));
-
 			pDataFrame->streamType = MP4STREAM_VIDEO;
 			pDataFrame->nFrameType = nIFrame;
 			pDataFrame->uPTS = 0x00;
 			pDataFrame->nlen = nSize;	
 			pDataFrame->pData= (unsigned char*)pData;		
 			cdr_mp4_write_frame(handle,pDataFrame);	
-			totalFrame--;
-			//usleep(10);
 		}	
 		cdr_mp4_close(handle);
 		handle = -1;
@@ -103,14 +94,12 @@ int main(void)
 	getchar();
 #endif	
 
-#endif	
-
+	//demo of cut mp4.
 	cdr_read_mp4_ex("19700113063129",10,(stream_out_cb)mp4_cutfinish);
 	cdr_read_mp4_ex("19700113063129",15,(stream_out_cb)mp4_cutfinish);
 	cdr_read_mp4_ex("19700113063139",15,(stream_out_cb)mp4_cutfinish);
 	getchar();
 
-	cdr_mp4ex_close();
 	cdr_mp4dirlist_free();		
 
 	return 0;

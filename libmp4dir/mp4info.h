@@ -130,7 +130,7 @@ typedef struct mp4Context
 {
 	int nIndex;
 	char sName[256];		
-	int  nlen;
+	int  nlen;//second of video
 	int nCutFlag;
 	int closeFlag;
 	int  nNeedAudio;
@@ -138,30 +138,39 @@ typedef struct mp4Context
 	unsigned char pps[64];
 	int spslen;
 	int ppslen;
-	//list *pFramelist;
+	int nFrameleft;//need write nFrameleft to close mp4.
 	framenode *pFrameHead;
 	framenode *pFrameTail;
 	MP4FileHandle hFile;          //mp4文件描述符
 	MP4TrackId video;              //视频轨道标志符
-	MP4TrackId audio;              //音频轨道标志符
-	
+	MP4TrackId audio;              //音频轨道标志符	
 	MP4V2_ACONFIG oAudioCfg;
 	MP4V2_VCONFIG oVideoCfg;	
 	newmp4_out_cb outcb;
 	pthread_t tfid;
 }Mp4Context;
 
+//SD卡录制相关的接口.
+//需要用线程异步+回调的方法，防止录制视频的时候丢帧.
+//但是需要控制好节奏，否则可能录制的视频不是从I帧开始,导致mp4黑屏.
+//看是否需要缓存最后一振IFrame数据.
 int cdr_mp4_create(Mp4Context *pMp4Context);
 int cdr_mp4_write_frame(int handle,MP4_FRAME *pData);
 int cdr_mp4_close(int handle);
+int cdr_mp4_checklen(int handle);
+int cdr_mp4_setlen(int handle,int len);
 
 
-
+//截取视频需要的接口.为防止截取太频繁，所有截取相关的视频都都在内部一个线程内部完成
 int cdr_mp4_create_ex(Mp4Context *pMp4Context);
 int cdr_mp4_write_frame_ex(int handle,MP4_FRAME *pData);
 int cdr_mp4_close_ex(int handle);
+
+
+//供REC 流读取数据的接口
+//内部单独维护一个指针，会循环读取.主动跳到Next frame.
 int cdr_mp4ex_read_vframe(char **pFrameData,int *nLen,int *IFrame);
-int cdr_mp4ex_close(void);
+
 
 
 typedef struct _mp4_dir_info

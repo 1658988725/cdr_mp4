@@ -89,6 +89,7 @@ int cdr_mp4dirlist_free(void)
 {	
 	pMp4dirinfo->nThreadStart = 0;
 	sleep(1);
+
 	empty_list(pMp4dirinfo->fileList,mp4Item_free);
 	empty_list(pMp4dirinfo->cutList,mp4Item_free);
 	free(pMp4dirinfo->fileList);
@@ -99,7 +100,13 @@ int cdr_mp4dirlist_free(void)
 	pMp4dirinfo = NULL;
 	
 	if(g_pRrecStream)
+	{
+		if(g_pRrecStream->oMp4File)
+			MP4Close(g_pRrecStream->oMp4File,0);
+		
+		g_pRrecStream->oMp4File = NULL;	
 		free(g_pRrecStream);
+	}
 	g_pRrecStream = NULL;
 	
 	return 0;
@@ -475,13 +482,3 @@ int cdr_mp4ex_read_vframe(char **pFrameData,int *nLen,int *IFrame)
 	
 	return 0;
 }
-int cdr_mp4ex_close(void)
-{
-	if(g_pRrecStream)
-	if(g_pRrecStream->oMp4File)
-		MP4Close(g_pRrecStream->oMp4File,0);
-	g_pRrecStream->oMp4File = NULL;
-	
-	return 0;
-}
-
